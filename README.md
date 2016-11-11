@@ -16,7 +16,7 @@ When anyone makes a payment to another user, they'll be notified if they've neve
 * "unverified: You've never had a transaction with this user before. Are you sure you would like to proceed with this payment?"
 
 #### Feature 2
-The PayMo team is concerned that these warnings could be annoying because there are many users who haven't had transactions, but are still in similar social networks. 
+The PayMo team is concerned that these warnings could be annoying because there are many users who haven't had transactions but are still in similar social networks. 
 
 For example, User A has never had a transaction with User B, but both User A and User B have made transactions with User C, so User B is considered a "friend of a friend" for User A.
 
@@ -116,13 +116,17 @@ We have a record of existing customers and their transactions. Each user has a u
 
 There are many ways to go about the problem. I decided to use a dictionary to make decisions for feature 1 and feature 2, primarily because this method is much faster than the alternatives that I am aware of. Dictionary holds `user ==> set(past_transactions)`. 
 
-If `A` and `B` had transactions with each other, `A` shows up in `B`'s children, and `B` shows up in `A`'s children. Elements in `A_child, B_child` are unique because they're stored on a set. As such, one can simply ask `if A in B` to figure out if `A` and `B` had any transactions before.
+Let A and B be two nodes, that we receive for transaction request. If `A` and `B` had transactions with each other, `A` shows up in `B`'s children, and `B` shows up in `A`'s children. Elements in `A_child, B_child` are unique because they're stored on a set. They're saved in a dictionary ~ ds ==> set(unique nodes from past transactions). As such, one can simply ask `if A in B` to figure out if nodes `A` and `B` had made transactions before.
 
-Similarly, to find out if `A` and `B` are separated by 1 degree (have a common friend), we can get a list of A's child, B's child, and see if these two sets have any intersection via  `A_child.intersection(B_child)`. If the length of intersection >0, then A and B did have made transactions before.
+Similarly, to find out if `A` and `B` are separated by 1 degree (have a common friend), we can get a list of A's child, B's child, and see if these two sets have any intersection via  `A_child.intersection(B_child)`. W're making intersection of sets. If the length of intersection > 0, then A and B did have at least one transactions before.
 
-For feature 3, I used networkx library to find the shortest path between two users. The object holding data, `G`, has a member function called `has_node` which tells whether G has a particular node. So, if G has both node A and B, and if A and B are connected, we can ask for the shortest length between nodes A and B. 
+For feature 3, I used networkx library to find the shortest path between two users. The object holding data, `G`, has a member function called `has_node` which tells, as name suggests, whether G has a particular node. So, if G has both node A and B, and if A and B are connected, we can ask for the shortest length between nodes A and B. If it has both nodes, and there is no shortest length (gives error), it means that these nodes are "islands" with no connection to each other, in which case flag false because lenth of separation > 4 (or is it?). 
 
-If a transaction is trusted (`A` and `B` exist, deg. of separation is <= 4), then this new transaction is added to existing network. For instance, If `A` and `E` are separated by deg. 4 and gets flagged as `trusted`, separation between `A` and `E` is now 1. In networkx language, I add edge (A,E) to G. For feature 1 and 2, I simply add each user to other's set of children ~ A.add(E), and E.add(A).
+If a transaction is trusted (`A` and `B` exist, deg. of separation is <= 4), then this new transaction is added to existing network. For instance, If `A` and `E` are separated by deg. 4, it will get flagged as `trusted` and then separation between `A` and `E` would shorten to 1. In networkx language, I add edge (A,E) to G. For the dictionary, I simply add each user to other's set of children ~ A.add(E), and E.add(A) to make an update. Due to this operation, as new transaction request pours in, newer and newer 2st degree connections are turning into 1 degrees, 5 degrees to 4, and so on. As a result, more and more transactions are being "trusted". 
+
+Since all transactions with new user is always flagged `untrusted`, the keys remain the same (they do not grow ~ netrork remains same). As a result, this network will asymptotically reach to `all verified` state, where no new flag is raised.  
+
+The output of features 1, 2, and 3 are saved at `paymo_output` directory under output1.txt, output2.txt, and output3.txt respectively. 
 
 #### Edge cases
 Few tricky cases that need to be taken care of. 
@@ -138,7 +142,7 @@ Following are the top 5 nodes, by the number of 1st degree friends they have.
 Smaller blobs are the common nodes between the large nodes.
 
 
-One interesting thing was that, even for 1 degree or 2-degree separation, the shortest_path from NetworkX took as much time as it did for >=4 degrees. So, I chose to simply use dictionary mapping to handle feature 1 and 2. I could have kept feature 1 and 2 under feature 3 (first check if len <=4, then ...), but using two different methods allows for better understanding of what's happening under the hood.
+One interesting thing was that, even for 1 degree or 2-degree separation, the shortest_path from NetworkX took as much time as it did for >= 4 degrees. So, I chose to simply use dictionary mapping to handle feature 1 and 2. I could have kept feature 1 and 2 under feature 3 (first check if len <=4, then ...), but using two different methods allows for better understanding of what's happening under the hood.
 
 From the full data, `3938360` records gets loaded from the input file in about 10 seconds, out of which `77360` are unique users. This is tested against `2900805` transaction requests, which get flagged in 3 different ways.
 
