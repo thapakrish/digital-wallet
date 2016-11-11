@@ -1,14 +1,14 @@
-# Table of Contents
+## Table of Contents
 
-1. [Challenge Summary] (README.md#challenge-summary)
-2. [Description of Data] (README.md#description-of-data)
+1. [Introduction] (README.md#intro)
+2. [Data Description] (README.md#data-description)
 3. [Solution] (README.md#solution)
 4. [Repo directory structure] (README.md#repo-directory-structure)
 4. [Result] (README.md#result)
 
-### Challenge Summary
+### Introduction
 
-Imagine you're a data engineer at a "digital wallet" company called PayMo that allows users to easily request and make payments to other PayMo users. The team at PayMo has decided they want to implement features to prevent fraudulent payment requests from untrusted users. 
+A "digital wallet" company called PayMo allows users to easily request and make payments to other PayMo users. The team at PayMo has decided they want to implement features to prevent fraudulent payment requests from untrusted users. 
 
 #### Feature 1
 When anyone makes a payment to another user, they'll be notified if they've never made a transaction with that user before.
@@ -34,21 +34,13 @@ More generally, PayMo would like to extend this feature to larger social network
 
 <img src="./images/fourth-degree-friends2.png" width="300">
 
-In the above diagram, payments have transpired between User
-
-* A and B 
-* B and C 
-* C and D 
-* D and E 
-* E and F
-
-Under this feature, if User A were to pay User E, there would be no warning since they are "4th degree friends". 
+In the above diagram, payments have transpired between users (A, B),  (B, C), (C, D), (D, E), and (E, F). Under this feature, if User A were to pay User E, there would be no warning since they are "4th degree friends". 
 
 However, if User A were to pay User F, a warning would be triggered as their transaction is outside of the "4th-degree friends network."
 
 (Note that if User A were to pay User C instead, there would be no warning as they are "2nd-degree" friends and within the "4th degree network") 
 
-### Description of Data
+### Data Description
 
 [Back to Table of Contents] (README.md#table-of-contents)
 
@@ -120,7 +112,7 @@ Repo Structure
 
 [Back to Table of Contents] (README.md#table-of-contents)
 
-We have a record of existing customers and their transactions. Each user has a unique identification number, and thus we can use this as a key to store information about this user.
+We have a record of existing customers and their transactions. Each user has a unique identification number, and thus we can use this as a key to store information about each user.
 
 There are many ways to go about the problem. I decided to use a dictionary to make decisions for feature 1 and feature 2, primarily because this method is much faster than the alternatives that I am aware of. Dictionary holds `user ==> set(past_transactions)`. 
 
@@ -146,12 +138,23 @@ Following are the top 5 nodes, by the number of 1st degree friends they have.
 Smaller blobs are the common nodes between the large nodes.
 
 
-One interesting thing was that, even for 1 degree or 2-degree separation, the shortest_path from NetworkX took as much time as it did for >=4 degrees. So, I chose to simply use dictionary mapping to handle feature 1 and 2.
+One interesting thing was that, even for 1 degree or 2-degree separation, the shortest_path from NetworkX took as much time as it did for >=4 degrees. So, I chose to simply use dictionary mapping to handle feature 1 and 2. I could have kept feature 1 and 2 under feature 3 (first check if len <=4, then ...), but using two different methods allows for better understanding of what's happening under the hood.
 
 From the full data, `3938360` records gets loaded from the input file in about 10 seconds, out of which `77360` are unique users. This is tested against `2900805` transaction requests, which get flagged in 3 different ways.
 
 `Number of unverifed transactions per feature {1: 1439961, 2: 639464, 3: 99189}`
 
+
+As we can see, feature 1 flags 1439961 out of 2900805 transactions for fraudulent transaction, which comes to about 50% of total customers. About 22 % transactions get flagged via feature 2, and about 3 % transactions get flagged with feature 3.
+
+
 `Top 5 nodes (node ==> #children):  [(2481, 3798), (4675, 3496), (394, 3458), (225, 2525), (377, 2425)]`
 
 Avg. time spent on features per transaction is in the order of ~$10^{-6}$ for feature 1 and 2, and ~$~10^{-4}$ seconds for feature 3.
+
+#### Howto
+Download the data as instructed in `paymo_input/batch_payment.txt` and `paymo_input/stream_payment.txt`. To run for the full data, `source run.sh` from main folder. To run the tests, `source run_tests.sh` from `insight_testsuite` directory.
+
+
+You can tweak argument to the main function to allow for tests or graphs.  See `antifraud.py` for more information.
+
