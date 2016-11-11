@@ -204,7 +204,7 @@ def draw_network(G, ds, n = 5, label = False):
 
 
 
-def test(G, ds, frm, to):
+def test_cout(G, ds, frm, to):
     """ STDOUT with elements for few test items
     """
     print "Common friends among ", "(", frm, ",", to, ")", common_friends(ds, (frm,to))
