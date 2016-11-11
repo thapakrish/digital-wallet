@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 # Main Entry Point
-def main(draw):
+def main(fname_batch, fname_stream, output1, output2, output3, draw, test):
     """Find the fraudulent payment requests.
     -------------
     draw: True or False to draw top n networks
@@ -24,35 +24,9 @@ def main(draw):
     for transaction requests, if approved, update network
     """
 
-    #
-    # PARSE VARS FROM COMMAND LINE
-    #
-
-    fname_batch = ""
-    fname_stream = ""
-    output1 = ""
-    output2 = ""
-    output3 = ""
-
-
-    # Get the input and output filenames from the command line
-    parser = antifraud_arg_parser()
-    args = parser.parse_args()
-
-    if args.outfiles:
-        if len(args.outfiles) < 5:
-            print "Retry. Need more input"
-        else:
-            fname_batch = args.outfiles[0]
-            fname_stream = args.outfiles[1]
-            output1, output2, output3 = args.outfiles[2:]
-
-    else:
-        print "Provide some input"
-
 
     #
-    # NOW BUILD THE RECORD FROM EXISTING CUSTOMERS
+    # BUILD THE RECORD FROM EXISTING CUSTOMERS
     #
 
     fromto = []        # tuple of (from, to)
@@ -64,7 +38,7 @@ def main(draw):
     log.debug("Building record from past users data.")
     start = time.clock()
     cols, fromtoBATCH = readFile(fname_batch)
-    log.debug("Record built for %s past payments! in %s", len(fromto), time.clock() - start)
+    log.debug("Record built for %s past payments! in %s", len(fromtoBATCH), time.clock() - start)
 
 
     # BUILD RELATIONSHIP MAP
@@ -77,17 +51,17 @@ def main(draw):
     log.debug("Building relationship map ")
 
     ds = defaultdict(set)     # Could have used a list. Sets for faster lookup
-    for k, v in fromtoBATCH[0:500]:
+    for k, v in fromtoBATCH:
         ds[k].add(v)
         ds[v].add(k)
 
     G.add_nodes_from(ds.keys())
-    G.add_edges_from(fromtoBATCH[0:500])
+    G.add_edges_from(fromtoBATCH)
     log.debug("Done building relationship network!")
 
 
     log.info("Sanity check, nodes: %d", nx.number_of_nodes(G) == len(ds))
-    log.info("Total records: %s unique users: %s unique nodes: %s", len(fromto), len(ds), nx.number_of_nodes(G))
+    log.info("Total records: %s unique users: %s unique nodes: %s", len(fromtoBATCH), len(ds), nx.number_of_nodes(G))
     # print time.clock() - start
 
 
@@ -107,7 +81,7 @@ def main(draw):
     n_verified = {1:0, 2:0, 3:0}    # hold no. of unverified users per feature
     counter = 0
     # Check for fraudulent transactions
-    for frm, to in fromtoSTREAM[0:500]:
+    for frm, to in fromtoSTREAM:
 
         # If either of the user has no histry of transaction, flag false
         if ((frm not in ds) or (to not in ds)):
@@ -122,7 +96,8 @@ def main(draw):
             o2.write("trusted\n")
             o3.write("trusted\n")
         else:
-#            test(G, ds, frm, to)
+            if (test):
+                test_cout(G, ds, frm, to)
 
             #
             # FEATURE ONE
@@ -183,6 +158,7 @@ def main(draw):
                     n_verified[3] += 1
             else:
                 # Either of nodes do not exist, in which case flag
+                print "Did not reach here!"
                 o3.write('unverified\n')
                 n_verified[3] += 1
 
@@ -211,14 +187,41 @@ def main(draw):
     print "#unverifed transactions per feature" , n_verified
 
     if (draw):
-        draw_network(G, ds, 5, level = True)
+        draw_network(G, ds, 5, label = True)
         #transaction_plot(ds)
     return
 
 
 
 if __name__ == "__main__":
-    main(draw = False)
+    #
+    # PARSE VARS FROM COMMAND LINE
+    #
+
+    fname_batch = ""
+    fname_stream = ""
+    output1 = ""
+    output2 = ""
+    output3 = ""
+    draw = True
+    test = False
+
+    # Get the input and output filenames from the command line
+    parser = antifraud_arg_parser()
+    args = parser.parse_args()
+
+    if args.outfiles:
+        if len(args.outfiles) < 5:
+            print "Retry. Need more input"
+        else:
+            fname_batch = args.outfiles[0]
+            fname_stream = args.outfiles[1]
+            output1, output2, output3 = args.outfiles[2:5]
+    else:
+        print "Provide some input"
+
+    main(fname_batch, fname_stream, output1, output2, output3, draw, test)
+
 
 # TODO
 # Add weights to each edge. 1 deg ~8, 2 deg ~ 4, 3 ~ 2, 4 ~1, >4 ~ 0 ...
